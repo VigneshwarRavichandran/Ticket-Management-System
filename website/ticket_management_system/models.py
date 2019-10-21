@@ -1,5 +1,17 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 
-class User(models):
-	pass
+User = get_user_model()
+
+class Post(models.Model):
+	title = models.TextField()
+	content = models.TextField()
+	createdby = models.ForeignKey(User, on_delete=models.CASCADE)
+	votes = models.ManyToManyField('Vote')
+	comments = models.ManyToManyField('Comment')
+
+class Vote(models.Model):
+	votedby = models.ForeignKey(User, on_delete=models.CASCADE)
+
+class Comment(models.Model):
+	commentedby = models.ForeignKey(User, on_delete=models.CASCADE)
