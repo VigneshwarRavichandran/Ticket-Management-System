@@ -29,11 +29,25 @@ def login(request):
 		password = request.POST.get('password')
 		user = authenticate(username=username, password=password)
 		if user is not None:
-			# return redirect(profile, user.id, user)
-			return HttpResponse('Success')
+			return redirect(profile, user.id)
 		context['error'] = 'Invalid credentials'
 		return render(request, 'login.html', context)
 	return render(request, 'login.html', context)
+
+def profile(request, user_id):
+	context = {
+		'posts' : None
+	}
+	if request.method == 'POST':
+		if 'new_post' in request.POST:
+			post_title = request.POST.get('post_title')
+			post_content = request.POST.get('post_content')
+			post = Post(title=post_title, content=post_content, createdby_id=user_id)
+			post.save()
+		return HttpResponse('Button')
+	context['posts'] = Post.objects.all().values_list()
+	return render(request, 'profile.html', context)
+
 
 # 	# user = User.objects.create_user('john', 'lennon@thebeatles.com', 'johnpassword')
 # 	# user.save()
