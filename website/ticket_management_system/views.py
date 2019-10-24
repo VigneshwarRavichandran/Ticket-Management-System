@@ -44,7 +44,6 @@ def profile(request, user_id):
 			post_content = request.POST.get('post_content')
 			post = Post(title=post_title, content=post_content, createdby_id=user_id)
 			post.save()
-		return HttpResponse('Button')
 	context['posts'] = Post.objects.all().values_list()
 	return render(request, 'profile.html', context)
 
