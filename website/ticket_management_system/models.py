@@ -10,6 +10,9 @@ class Post(models.Model):
 	votes = models.ManyToManyField('Vote')
 	comments = models.ManyToManyField('Comment')
 
+	def __repr__(self):
+		return self.title
+
 class Vote(models.Model):
 	votedby = models.ForeignKey(User, on_delete=models.CASCADE)
 
