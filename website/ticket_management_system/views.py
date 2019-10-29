@@ -1,14 +1,15 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, logout
 from django.shortcuts import get_object_or_404
 from django.views.generic import ListView
 from django.http import HttpResponse
-from .models import Post, Vote
+from .models import Post, Vote, Comment
 from .helper import get_postdetails
 from django.db.models import Count
 from django.views import View
-
+from django.db import connection
+from django.contrib import messages
 
 def register(request):
 	context = {
@@ -53,40 +54,30 @@ def profile(request):
 			post_content = request.POST.get('post_content')
 			post = Post(title=post_title, content=post_content, createdby_id=userid)
 			post.save()
-		print(request.POST)
 	context['posts'] = get_postdetails(user_id)
 	return render(request, 'profile.html', context)
 
-# class PostList(ListView):
-# 	template_name = 'post/post.html'
-
-# 	def get_queryset(self):
-# 		return Post.objects.all()
-
-# 	def get_context_data(self, **kwargs):
-# 		context = super().get_context_data(**kwargs)
-# 		posts = Post.objects.prefetch_related('votes').annotate(Count('votes', distinct=True)).values(
-# 			'title', 'content', 'votes__count')
-# 		for post in posts:
-# 			context['title'] = post['title']
-# 			context['content'] = post['content']
-# 			context['votes'] = post['votes__count']
-# 		return context
-
 class PostView(View):
-	template_name = 'post/post.html'
+	template_name = 'post/posts.html'
   
 	def get(self, request, *args, **kwargs):
 		context = {
 		 'posts' : []
 		}
-		posts = Post.objects.prefetch_related('votes').annotate(Count('votes', distinct=True)).values(
-			'title', 'content', 'votes__count')
+		posts = Post.objects.prefetch_related('votes', 'comments').annotate(Count('votes', distinct=True)).annotate(Count('comments', distinct=True)).values(
+			'id', 'title', 'content', 'votes__count', 'comments__count')
+		voted_post_ids = Vote.objects.prefetch_related('posts').filter(votedby_id=request.session['user_id']).values_list('post', flat=True)
 		for post in posts:
+			is_voted = False
+			if post['id'] in voted_post_ids:
+				is_voted = True
 			context['posts'].append({
+				'id' : post['id'],
 				'title' : post['title'],
 				'content' : post['content'],
-				'votes' : post['votes__count']
+				'votes' : post['votes__count'],
+				'is_voted' : is_voted,
+				'total_comments' : post['comments__count']
 			})
 		return render(request, self.template_name, context)
 
@@ -96,17 +87,63 @@ class PostView(View):
 		post_content = request.POST.get('post_content')
 		post = Post(title=post_title, content=post_content, createdby_id=user_id)
 		post.save()
+		messages.success(request, 'Posted Successfully')
 		return redirect('posts')
 
+def create_vote(request, post_id):
+	user_id = request.session['user_id']
+	post = Post.objects.get(id=post_id)
+	vote, created = Vote.objects.get_or_create(votedby_id=user_id, post=post)
+	if created:
+		post.votes.add(vote)
+		messages.success(request, 'Voted Successfully')
+	else:
+		messages.warning(request, "Sorry, you have voted already!")
+	return redirect('posts')
 
-# 	# user = User.objects.create_user('john', 'lennon@thebeatles.com', 'johnpassword')
-# 	# user.save()
-# 	# user = UserSystem.objects.get(user_id=5)
-# 	# post = Post(title='django', content='programming language', createdby_id=1)
-# 	# post.save()
-# 	post = Post.objects.get(id=3)
-# 	vote = Vote(votedby_id=2)
-# 	vote.save()
-# 	post.votes.add(vote)
-# 	print(post.votes.all())
-# 	return HttpResponse('Success')
+def get_post(request, post_id):
+	user_id = request.session['user_id']
+	post = Post.objects.prefetch_related('votes', 'comments').filter(id=post_id).annotate(Count('votes', distinct=True)).annotate(Count('comments', distinct=True)).values(
+			'id', 'title', 'content', 'votes__count', 'comments__count')
+	voted_post_ids = Vote.objects.prefetch_related('posts').filter(votedby_id=request.session['user_id']).values_list('post', flat=True)
+	post_comments = Post.objects.prefetch_related('comments').filter(id=post_id).values(
+			'comments__commentedby__username','comments__content')
+	post = post[0]
+	comments = []
+	for post_comment in post_comments:
+		if post_comment['comments__commentedby__username'] is not None:
+			comments.append({
+					'commentedby' : post_comment['comments__commentedby__username'],
+					'content' : post_comment['comments__content']
+				})
+	is_voted = False
+	if post['id'] in voted_post_ids:
+		is_voted = True
+	context = {
+		'id' : post['id'],
+		'title' : post['title'],
+		'content' : post['content'],
+		'votes' : post['votes__count'],
+		'is_voted' : is_voted,
+		'total_comments' : post['comments__count'],
+		'comments' : comments
+	}
+	return render(request, 'post/post.html', context)
+
+def create_comment(request, post_id):
+	context = {
+		'posts' : None
+	}
+	user_id = request.session['user_id']
+	if request.method == 'POST':
+		if 'comment' in request.POST:
+			post_comment = request.POST.get('post_comment')
+			post = Post.objects.get(id=post_id)
+			comment = Comment.objects.create(commentedby_id=user_id, content=post_comment)
+			post.comments.add(comment)
+	messages.success(request, 'Commented Successfully')
+	return redirect('get_post', post_id)
+
+def logout_view(request):
+	logout(request)
+	return redirect(login)

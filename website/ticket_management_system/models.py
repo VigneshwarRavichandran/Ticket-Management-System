@@ -17,4 +17,5 @@ class Vote(models.Model):
 	votedby = models.ForeignKey(User, on_delete=models.CASCADE)
 
 class Comment(models.Model):
+	content = models.TextField(blank=True)
 	commentedby = models.ForeignKey(User, on_delete=models.CASCADE)

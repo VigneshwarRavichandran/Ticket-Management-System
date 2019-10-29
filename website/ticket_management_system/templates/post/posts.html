@@ -31,43 +31,42 @@
     {% endfor %}
 </ul>
 {% endif %}
-
 	<div class="container">
 		<div align="right">
 			<a href="/logout/" class="btn btn-dark btn-lg"> Logout </a>
 		</div>
-    <div class="media" style="border-style: ridge">
-		  <div class="media-body">
-		    <h3>#{{ id }} {{ title }}</h3>
-		    <p>{{ content }}</p>
-		    <form method="Post" action="/post/{{ id }}/vote">
-		    	{% csrf_token %}
-		    	{% if is_voted %}
-				   <button type="submit" class="btn btn-success" id="vote" name="vote" disabled>Vote</button>
-			   	{% else %}
-			   		<button type="submit" class="btn btn-success" id="vote" name="vote">Vote</button>
-					{% endif %}
-					<span>{{ votes }} votes and {{ total_comments }} comments</span>
-		    </form><br>
-		    <form method="Post" action="/post/{{ id }}/comment">
-		    	{% csrf_token %}
-		    	<div class="input-group mb-3">
-			    	<textarea class="form-control" id="post_comment" rows="2" name="post_comment"></textarea>
-			    	<div class="input-group-append">
-					    <button class="btn btn-outline-secondary" type="submit" id="comment" name="comment">Comment</button>
-					  </div>
-					</div>
-		    </form>
-		    {% for comment in comments %}
-			    <div class="media" style="border-style: ridge;">
-					  <h3 class="mr-3"> {{ comment.commentedby }} </h3>
-					  <div class="media-body">
-					    {{ comment.content }}
-					  </div>
-					</div>
-		    {% endfor %}
+		<h1>Feeds For You!!</h1>
+		{% for post in posts %}
+      <div class="media" style="border-style: ridge">
+			  <div class="media-body">
+			    <h3>#{{post.id}} <a href="/post/{{ post.id }}">{{ post.title }}</a></h3>
+			    <p>{{ post.content }}</p>
+			    <form method="Post" action="/post/{{ post.id }}/vote">
+			    	{% csrf_token %}
+			    	{% if post.is_voted %}
+					   <button type="submit" class="btn btn-success" id="vote" name="vote" disabled>Vote</button>
+				   	{% else %}
+				   		<button type="submit" class="btn btn-success" id="vote" name="vote">Vote</button>
+						{% endif %}
+						<span>{{ post.votes }} votes and {{ post.total_comments }} comments</span>
+			    </form>
+			  </div>
+			</div>
+    {% endfor %}
+    <br>
+    <h2>New Post</h2>
+    <form method="post">
+			{% csrf_token %}
+	    <div class="form-group">
+	      <label>Title</label>
+	      <input type="text" class="form-control" id="post_title" placeholder="Enter post title" name="post_title">
+	    </div>
+	    <div class="form-group">
+		    <label>Content</label>
+		    <textarea class="form-control" id="post_content" rows="3" name="post_content"></textarea>
 		  </div>
-		</div>
+	    <button type="submit" class="btn btn-default" id="new_post" name="new_post">Post</button>
+	  </form>
 	</div>
 </body>
 </html>
